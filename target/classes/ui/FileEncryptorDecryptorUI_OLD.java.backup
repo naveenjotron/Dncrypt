@@ -1,45 +1,55 @@
 package ui;
 
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 
 import baseCodes.FileEncryptorDecryptor;
 import baseCodes.PreferencesManager;
+
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.security.InvalidKeyException;
+import com.jgoodies.forms.layout.FormLayout;
+import com.jgoodies.forms.layout.ColumnSpec;
+import com.jgoodies.forms.layout.RowSpec;
+
+
 import net.miginfocom.swing.MigLayout;
+import javax.swing.GroupLayout.Alignment;
+import javax.swing.border.TitledBorder;
+import javax.swing.border.EtchedBorder;
+import javax.swing.border.EmptyBorder;
 
 public class FileEncryptorDecryptorUI extends JFrame {
 
     private JTextField passwordField;
     private JTextField directoryField;
     private JCheckBox encryptFileNameCheckBox;
+    private String cryptType;
     JTextPane textPane;
     private PreferencesManager preferencesManager;
-    private FileEncryptorDecryptor fileEncryptorDecryptor;
+    FileEncryptorDecryptor objFED;
 
     public FileEncryptorDecryptorUI() {
         super("File Encryptor/Decryptor");
         
         String appDirectory = new File(".").getAbsolutePath(); // Use the current directory of the app
         preferencesManager = new PreferencesManager(appDirectory);
-        fileEncryptorDecryptor = new FileEncryptorDecryptor();
 
         // Show the disclaimer dialog if needed
         DisclaimerDialog.showDisclaimer(this, preferencesManager);
         
         getContentPane().setLayout(new MigLayout("", "[][grow, fill][]", "[][grow, fill][]"));
         
+
         // Top Panel with FlowLayout for the "Select File/Folder" button
         JPanel topPanel = new JPanel(new FlowLayout());
         JButton fileChooserButton = new JButton("Select File/Folder");
         fileChooserButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                handleFileSelection();
-            }
+        	public void actionPerformed(ActionEvent e) {
+        		handleFileSelection();
+        	}
         });
         topPanel.add(fileChooserButton);
 
@@ -57,25 +67,19 @@ public class FileEncryptorDecryptorUI extends JFrame {
         centerPanel.add(new JLabel("Enter Password:"), "cell 0 1");
         centerPanel.add(passwordField, "cell 1 1, growx, height 25:push");
         
-        // Button Panel
+     // Button Panel
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 30, 10));
         JButton encryptButton = new JButton("Encrypt Files");
         encryptButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                handleFileProcessing((file, password, encryptFileName) -> {
-                    fileEncryptorDecryptor.encryptFile(file, password, encryptFileName);
-                    return 1;
-                });
-            }
+        	public void actionPerformed(ActionEvent e) {
+        		handleFileProcessing(FileEncryptorDecryptor::encryptFiles);
+        	}
         });
         JButton decryptButton = new JButton("Decrypt Files");
         decryptButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                handleFileProcessing((file, password, encryptFileName) -> {
-                    fileEncryptorDecryptor.decryptFile(file, password, encryptFileName);
-                    return 1;
-                });
-            }
+        	public void actionPerformed(ActionEvent e) {
+        		handleFileProcessing(FileEncryptorDecryptor::decryptFiles);
+        	}
         });
         buttonPanel.add(encryptButton);
         buttonPanel.add(decryptButton);
@@ -85,22 +89,25 @@ public class FileEncryptorDecryptorUI extends JFrame {
         encryptFileNameCheckBox = new JCheckBox("Encrypt File Names");
         centerPanel.add(encryptFileNameCheckBox, "cell 0 2 2 1");
         
+
         // Text Pane with JScrollPane
         JScrollPane scrollPane = new JScrollPane();
         textPane = new JTextPane();
         scrollPane.setViewportView(textPane);
         centerPanel.add(scrollPane, "cell 0 4 2 1, grow");
         
+
         // Add components to the main panel
         getContentPane().add(topPanel, "cell 1 0, growx");
         getContentPane().add(centerPanel, "cell 1 1, grow");
+        
+        // Action Listeners...
         
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(600, 369);  // Set an initial width of 600
         setLocationRelativeTo(null);
         setVisible(true);
     }
-
     private void handleFileSelection() {
         JFileChooser fileChooser = new JFileChooser();
         fileChooser.setDialogTitle("Select File or Folder");
@@ -111,6 +118,7 @@ public class FileEncryptorDecryptorUI extends JFrame {
         if (result == JFileChooser.APPROVE_OPTION) {
             File selectedFile = fileChooser.getSelectedFile();
             directoryField.setText(selectedFile.getAbsolutePath());
+//            JOptionPane.showMessageDialog(this, "Selected File/Folder: " + selectedFile.getAbsolutePath());
         }
     }
 
@@ -123,40 +131,33 @@ public class FileEncryptorDecryptorUI extends JFrame {
         File selectedFile = new File(directoryField.getText());
 
         try {
-            int fileCount = processFiles(selectedFile, passwordField.getText(), encryptFileNameCheckBox.isSelected(), fileProcessor);
+            int fileCount = fileProcessor.processFiles(selectedFile, passwordField.getText(), encryptFileNameCheckBox.isSelected());
             textPane.setText("Files processed successfully. Count: " + fileCount);
         } catch (InvalidKeyException e) {
             JOptionPane.showMessageDialog(this, "Incorrect password. Please try again.");
             textPane.setText("");
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
-            textPane.setText("");
         }
     }
-
-    private int processFiles(File file, String password, boolean encryptFileName, FileProcessor fileProcessor) throws Exception {
-        int fileCount = 0;
-        if (file.isDirectory()) {
-            File[] files = file.listFiles();
-            if (files != null) {
-                for (File childFile : files) {
-                    fileProcessor.processFile(childFile, password, encryptFileName);
-                    fileCount++;
-                }
-            }
-        } else {
-            fileProcessor.processFile(file, password, encryptFileName);
-            fileCount++;
-        }
-        return fileCount;
-    }
+    
 
     @FunctionalInterface
     private interface FileProcessor {
-        int processFile(File file, String password, boolean encryptFileName) throws Exception;
+        int processFiles(File file, String password, boolean encryptFileName) throws InvalidKeyException;
     }
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(FileEncryptorDecryptorUI::new);
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
